@@ -8,12 +8,12 @@ class ProfessorRatingClient:
         self.token = None
     
     def validate_email(self, email):
-        """Basic email format validation"""
+        # Validate email format using a regular expression
         pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         return re.match(pattern, email) is not None
 
     def register(self):
-        """Handle user registration with validation"""
+        # Handle user registration with input validation
         try:
             if len(input("Username: ").strip()) > 150:
                 raise ValueError("Username must be less than 150 characters")
@@ -50,7 +50,7 @@ class ProfessorRatingClient:
             print(f"Unexpected error: {str(e)}")
 
     def login(self, url):
-        """Handle login with URL validation"""
+        # Handle login by validating URL and credentials, then retrieving the auth token
         try:
             if not url:
                 raise ValueError("URL is required")
@@ -90,12 +90,12 @@ class ProfessorRatingClient:
             print(f"Unexpected error: {str(e)}")
 
     def logout(self):
-        """Handle logout command"""
+        # Log out by resetting the auth token
         self.token = None
         print("Logged out successfully.")
 
     def list_modules(self):
-        """Handle module listing with error checking"""
+        # Retrieve and display module instances from the API
         try:
             if not self.token:
                 raise ValueError("You must be logged in to list modules")
@@ -125,7 +125,7 @@ class ProfessorRatingClient:
             print(f"Unexpected error: {str(e)}")
 
     def view_ratings(self):
-        """Handle rating viewing with error checking"""
+        # Retrieve and display professor ratings from the API
         try:
             if not self.token:
                 raise ValueError("You must be logged in to view ratings")
@@ -152,7 +152,7 @@ class ProfessorRatingClient:
             print(f"Unexpected error: {str(e)}")
 
     def average_rating(self, professor_id, module_code):
-        """Handle average rating command with validation"""
+        # Retrieve and display the average rating for a professor in a specific module
         try:
             if not professor_id or not module_code:
                 raise ValueError("Both professor ID and module code are required")
@@ -184,7 +184,7 @@ class ProfessorRatingClient:
             print(f"Unexpected error: {str(e)}")
     
     def rate_professor(self, professor_id, module_code, year, semester, rating):
-        """Handle rating submission with comprehensive validation"""
+        # Submit a rating for a professor for a specific module instance
         try:
             if not all([professor_id, module_code, year, semester, rating]):
                 raise ValueError("All fields are required")

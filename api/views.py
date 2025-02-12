@@ -9,30 +9,37 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from .models import Professor, Module, ModuleInstance, Rating
 from .serializers import *
 
+# Endpoint for user registration; allows any user to register
 @api_view(['POST'])
 @permission_classes([AllowAny]) 
 def register_user(request):
+    # Retrieve registration data from the request
     username = request.data.get('username')
     email = request.data.get('email')
     password = request.data.get('password')
     
+    # Check for all fields
     if not all([username, email, password]):
         return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
     
+    # Check for duplicates
     if User.objects.filter(username=username).exists():
         return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
     
-    user = User.objects.create_user(username=username, email=email, password=password)
+    User.objects.create_user(username=username, email=email, password=password)
     return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
 
+# Viewset for Module model
 class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
 
+# Viewset for ModuleInstance model
 class ModuleInstanceViewSet(viewsets.ModelViewSet):
     queryset = ModuleInstance.objects.all()
     serializer_class = ModuleInstanceSerializer
 
+    # Cache this list view for 15 minutes and vary by Cookie and Authorization headers
     @method_decorator(cache_page(60 * 15))
     @method_decorator(vary_on_headers("Cookie", "Authorization"))
     def list(self, request):
@@ -44,6 +51,7 @@ class ProfessorViewSet(viewsets.ModelViewSet):
     queryset = Professor.objects.all()
     serializer_class = ProfessorSerializer
 
+    # Cache this list view for 15 minutes and vary by Cookie and Authorization headers
     @method_decorator(cache_page(60 * 15))
     @method_decorator(vary_on_headers("Cookie", "Authorization"))
     def list(self, request):
@@ -51,7 +59,8 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(professors, many=True, context={'request': request})
         return Response(serializer.data)
 
-
+    # Cache this list view for 15 minutes and vary by Cookie and Authorization headers
+    # Action to compute the average rating for a professor in a given module
     @method_decorator(cache_page(60 * 15))
     @method_decorator(vary_on_headers("Cookie", "Authorization"))
     @action(detail=True, methods=['get'], url_path='modules/(?P<module_code>[^/.]+)/average')
@@ -62,7 +71,7 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         if not module:
             return Response({"error": "Module not found"}, status=status.HTTP_404_NOT_FOUND)
         
-        # Calculate average rating for the professor in this module
+        # Calculate average rating for the professor in given module
         avg_rating = Rating.objects.filter(
             professor=professor,
             module_instance__module=module
@@ -79,14 +88,18 @@ class ProfessorViewSet(viewsets.ModelViewSet):
             "average_rating": round(avg_rating)
         })
 
+# Viewset for Rating model
 class RatingViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = RatingSerializer
 
+    # Return ratings that belong to the logged-in user
     def get_queryset(self):
         return Rating.objects.filter(user=self.request.user)
 
+    # Create a new rating
     def perform_create(self, serializer):
+        # Retrieve additional data needed for creating a rating
         module_code = self.request.data.get('module_code')
         year = self.request.data.get('year')
         semester = self.request.data.get('semester')
@@ -100,6 +113,7 @@ class RatingViewSet(viewsets.ModelViewSet):
             module_instance=module_instance
         ).first()
         
+        # Check for existing rating if so update it if not create a new one
         if existing_rating:
             existing_rating.rating = serializer.validated_data.get('rating')
             existing_rating.save()
