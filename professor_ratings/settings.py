@@ -27,6 +27,8 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['sc22jo.pythonanywhere.com']
 
+STATIC_URL = '/static/'
+STATIC_ROOT = '/home/sc22jo/WebServicesCW1/static'
 
 # Application definition
 
