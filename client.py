@@ -1,6 +1,7 @@
 import requests
 import getpass
 import re
+import time
 
 class ProfessorRatingClient:
     def __init__(self):
@@ -59,10 +60,10 @@ class ProfessorRatingClient:
             if ' ' in url:
                 raise ValueError("URL contains invalid spaces")
                 
-            if url.startswith("http://"):
+            if url.startswith("https://"):
                 self.base_url = url
             else:
-                self.base_url = f"http://{url}"
+                self.base_url = f"https://{url}"
 
             username = input("Username: ").strip()
             password = getpass.getpass("Password: ").strip()
@@ -131,7 +132,7 @@ class ProfessorRatingClient:
                 raise ValueError("You must be logged in to view ratings")
 
             headers = {'Authorization': f'Token {self.token}'}
-            response = requests.get(f"{self.base_url}/api/professors/", headers=headers)
+            response = requests.get(f"{self.base_url}/api/professors/", headers=headers, params={'_': int(time.time())})
 
             if response.status_code == 200:
                 professors = response.json()
