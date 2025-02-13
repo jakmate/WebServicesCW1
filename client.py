@@ -13,22 +13,31 @@ class ProfessorRatingClient:
         pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         return re.match(pattern, email) is not None
 
-    def register(self):
+    def register(self, url):
         # Handle user registration with input validation
         try:
-            if len(input("Username: ").strip()) > 150:
-                raise ValueError("Username must be less than 150 characters")
+            if not url:
+                raise ValueError("URL is required")
+
+            if ' ' in url:
+                raise ValueError("URL contains invalid spaces")
+
+            if url.startswith("https://"):
+                self.base_url = url
+            else:
+                self.base_url = f"https://{url}"
+
             username = input("Username: ").strip()
+            if len(username) > 32:
+                raise ValueError("Username must be less than 150 characters")
+            
             email = input("Email: ").strip()
             password = getpass.getpass("Password: ").strip()
 
             if not all([username, email, password]):
                 raise ValueError("All fields are required")
 
-            if len(username) > 150:
-                raise ValueError("Username too long (max 150 characters)")
-                
-            if len(email) > 254:
+            if len(email) > 64:
                 raise ValueError("Email too long (max 254 characters)")
                 
             if not self.validate_email(email):
@@ -243,12 +252,12 @@ if __name__ == "__main__":
             cmd = command[0].lower()
             
             if cmd == "register":
-                if len(command) > 1:
-                    print("Error: 'register' command doesn't accept arguments")
+                if len(command) != 2:
+                    print("Usage: register <url>")
                     continue
-                client.register()
+                client.register(command[1])
             elif cmd == "login":
-                if len(command) < 2:
+                if len(command) != 2:
                     print("Usage: login <url>")
                     continue
                 client.login(command[1])
