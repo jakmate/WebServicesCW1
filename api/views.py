@@ -7,6 +7,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.reverse import reverse
 from .models import Professor, Module, ModuleInstance, Rating
 from .serializers import *
 
@@ -21,19 +22,51 @@ def register_user(request):
 
     # Check for all fields
     if not all([username, email, password]):
-        return Response({'error': 'All fields are required'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'error': 'Validation Error',
+            'code': status.HTTP_400_BAD_REQUEST,
+            'details': 'All fields are required'
+        }, status=status.HTTP_400_BAD_REQUEST)
 
     # Check for duplicates
     if User.objects.filter(username=username).exists():
-        return Response({'error': 'Username already exists'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({
+            'error': 'Conflict',
+            'code': status.HTTP_409_CONFLICT,
+            'details': 'Username already exists'
+        }, status=status.HTTP_409_CONFLICT)
 
     User.objects.create_user(username=username, email=email, password=password)
-    return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
+    return Response({
+        'message': 'User created successfully',
+        'links': [
+            {
+                'description': 'Login with your new account',
+                'url': reverse('api_token_auth', request=request),
+                'method': 'POST'
+            },
+            {
+                'description': 'Browse API root',
+                'url': reverse('api-root', request=request),
+                'method': 'GET'
+            }
+        ]
+    }, status=status.HTTP_201_CREATED)
 
 # Viewset for Module model
 class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            return super().retrieve(request, *args, **kwargs)
+        except Exception as e:
+            return Response({
+                'error': 'Not Found',
+                'code': status.HTTP_404_NOT_FOUND,
+                'details': str(e)
+            }, status=status.HTTP_404_NOT_FOUND)
 
 # Viewset for ModuleInstance model
 class ModuleInstanceViewSet(viewsets.ModelViewSet):
@@ -64,13 +97,17 @@ class ProfessorViewSet(viewsets.ModelViewSet):
     # Action to compute the average rating for a professor in a given module
     @method_decorator(cache_page(60 * 15, key_prefix="professor::average"))
     @method_decorator(vary_on_headers("Cookie", "Authorization"))
-    @action(detail=True, methods=['get'], url_path='modules/(?P<module_code>[^/.]+)/average')
+    @action(detail=True, methods=['get'], url_path='modules/(?P<module_code>[^/.]+)/average', url_name='module-average')
     def average(self, request, pk=None, module_code=None):
-        professor = self.get_object()
-        module = Module.objects.filter(code=module_code).first()
-
-        if not module:
-            return Response({"error": "Module not found"}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            professor = self.get_object()
+            module = Module.objects.get(code=module_code)
+        except Module.DoesNotExist:
+            return Response({
+                'error': 'Not Found',
+                'code': status.HTTP_404_NOT_FOUND,
+                'details': f'Module {module_code} not found'
+            }, status=status.HTTP_404_NOT_FOUND)
 
         # Calculate average rating for the professor in given module
         avg_rating = Rating.objects.filter(
@@ -79,14 +116,27 @@ class ProfessorViewSet(viewsets.ModelViewSet):
         ).aggregate(Avg('rating'))['rating__avg']
 
         if avg_rating is None:
-            return Response({"error": "No ratings found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({
+                'error': 'No Content',
+                'code': status.HTTP_204_NO_CONTENT,
+                'details': 'No ratings found for this combination'
+            }, status=status.HTTP_204_NO_CONTENT)
 
         return Response({
             "professor_id": professor.id,
             "professor_name": professor.name,
             "module_code": module.code,
             "module_name": module.name,
-            "average_rating": round(avg_rating)
+            "average_rating": round(avg_rating),
+            "links": [
+                {
+                    "rel": "professor",
+                    "href": reverse('professor-detail', 
+                                kwargs={'pk': professor.id},
+                                request=request),
+                    "method": "GET"
+                }
+            ]
         })
 
 # Viewset for Rating model

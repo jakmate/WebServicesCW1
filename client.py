@@ -13,23 +13,14 @@ class ProfessorRatingClient:
         pattern = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         return re.match(pattern, email) is not None
 
-    def register(self, url):
+    def register(self):
         # Handle user registration with input validation
         try:
-            if not url:
-                raise ValueError("URL is required")
-
-            if ' ' in url:
-                raise ValueError("URL contains invalid spaces")
-
-            if url.startswith("https://"):
-                self.base_url = url
-            else:
-                self.base_url = f"https://{url}"
+            self.base_url = "https://sc22jo.pythonanywhere.com"
 
             username = input("Username: ").strip()
             if len(username) > 32:
-                raise ValueError("Username must be less than 150 characters")
+                raise ValueError("Username must be less than 32 characters")
             
             email = input("Email: ").strip()
             password = getpass.getpass("Password: ").strip()
@@ -38,21 +29,29 @@ class ProfessorRatingClient:
                 raise ValueError("All fields are required")
 
             if len(email) > 64:
-                raise ValueError("Email too long (max 254 characters)")
+                raise ValueError("Email too long (max 64 characters)")
                 
             if not self.validate_email(email):
                 raise ValueError("Invalid email format")
 
             response = requests.post(
                 f"{self.base_url}/api/register/",
-                data={'username': username, 'email': email, 'password': password}
+                json={'username': username, 'email': email, 'password': password}
             )
 
             if response.status_code == 201:
-                print("Registration successful!")
+                data = response.json()
+                print(f"Registration successful! {data.get('message', '')}")
+                # Display HATEOAS links
+                if 'links' in data:
+                    print("\nNext steps:")
+                    for link in data['links']:
+                        print(f"- {link['description']}: {link['url']}")
             else:
-                error_msg = response.json().get('error', 'Unknown error')
-                raise ValueError(f"Registration failed: {error_msg}")
+                error_data = response.json()
+                error_msg = error_data.get('error', 'Unknown error')
+                details = error_data.get('details', '')
+                raise ValueError(f"Registration failed: {error_msg}. {details}")
 
         except ValueError as ve:
             print(f"Error: {ve}")
@@ -72,7 +71,7 @@ class ProfessorRatingClient:
             if url.startswith("https://"):
                 self.base_url = url
             else:
-                self.base_url = f"https://{url}"
+                self.base_url = f"http://{url}"
 
             username = input("Username: ").strip()
             password = getpass.getpass("Password: ").strip()
@@ -161,17 +160,11 @@ class ProfessorRatingClient:
         except Exception as e:
             print(f"Unexpected error: {str(e)}")
 
+    # Retrieve and display the average rating for a professor in a specific module
     def average_rating(self, professor_id, module_code):
-        # Retrieve and display the average rating for a professor in a specific module
         try:
             if not professor_id or not module_code:
                 raise ValueError("Both professor ID and module code are required")
-
-            if len(professor_id) > 10:
-                raise ValueError("Professor ID too long (max 10 characters)")
-                
-            if len(module_code) > 10:
-                raise ValueError("Module code too long (max 10 characters)")
 
             headers = {'Authorization': f'Token {self.token}'}
             response = requests.get(
@@ -180,16 +173,32 @@ class ProfessorRatingClient:
             )
 
             if response.status_code == 200:
+                # Success case
                 data = response.json()
                 stars = '*' * data['average_rating']
                 print(f"\nThe rating of {data['professor_name']} ({data['professor_id']}) "
-                      f"in module {data['module_name']} ({data['module_code']}) is {stars}")
+                    f"in module {data['module_name']} ({data['module_code']}) is {stars}")
+                
+            elif response.status_code == 204:
+                # No content case
+                print("\nNo ratings available for this professor/module combination")
+                
+            elif response.status_code == 404:
+                # Not found case
+                error_data = response.json()
+                print(f"\nError: {error_data.get('details', 'Professor or module not found')}")
+                
             else:
-                error_msg = response.json().get('error', 'Unknown error')
-                raise ValueError(f"Error: {error_msg}")
+                # Handle other errors
+                if response.content:  # Check if response has body
+                    error_data = response.json()
+                    details = error_data.get('details', '')
+                    print(f"\nError: {error_data.get('error', 'Unknown error')}. {details}")
+                else:
+                    print(f"\nError: Server returned {response.status_code} with no details")
 
-        except ValueError as ve:
-            print(f"Error: {ve}")
+        except requests.exceptions.JSONDecodeError:
+            print("Error: Invalid response format from server")
         except Exception as e:
             print(f"Unexpected error: {str(e)}")
     
@@ -252,27 +261,27 @@ if __name__ == "__main__":
             cmd = command[0].lower()
             
             if cmd == "register":
-                if len(command) != 2:
-                    print("Usage: register <url>")
+                if len(command) != 1:
+                    print("Usage: register")
                     continue
-                client.register(command[1])
+                client.register()
             elif cmd == "login":
                 if len(command) != 2:
                     print("Usage: login <url>")
                     continue
                 client.login(command[1])
             elif cmd == "logout":
-                if len(command) > 1:
+                if len(command) != 1:
                     print("Error: 'logout' command doesn't accept arguments")
                     continue
                 client.logout()
             elif cmd == "list":
-                if len(command) > 1:
+                if len(command) != 1:
                     print("Error: 'list' command doesn't accept arguments")
                     continue
                 client.list_modules()
             elif cmd == "view":
-                if len(command) > 1:
+                if len(command) != 1:
                     print("Error: 'view' command doesn't accept arguments")
                     continue
                 client.view_ratings()
