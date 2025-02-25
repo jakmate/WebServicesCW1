@@ -163,6 +163,9 @@ class ProfessorRatingClient:
     # Retrieve and display the average rating for a professor in a specific module
     def average_rating(self, professor_id, module_code):
         try:
+            if not self.token:
+                raise ValueError("You must be logged in to view ratings")
+            
             if not professor_id or not module_code:
                 raise ValueError("Both professor ID and module code are required")
 
@@ -205,6 +208,9 @@ class ProfessorRatingClient:
     def rate_professor(self, professor_id, module_code, year, semester, rating):
         # Submit a rating for a professor for a specific module instance
         try:
+            if not self.token:
+                raise ValueError("You must be logged in to view ratings")
+            
             if not all([professor_id, module_code, year, semester, rating]):
                 raise ValueError("All fields are required")
 
