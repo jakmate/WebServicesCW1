@@ -55,6 +55,7 @@ def register_user(request):
 
 # Viewset for Module model
 class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [AllowAny]
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
 
@@ -70,6 +71,7 @@ class ModuleViewSet(viewsets.ReadOnlyModelViewSet):
 
 # Viewset for ModuleInstance model
 class ModuleInstanceViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
     queryset = ModuleInstance.objects.all()
     serializer_class = ModuleInstanceSerializer
 
@@ -82,6 +84,7 @@ class ModuleInstanceViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 class ProfessorViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
     queryset = Professor.objects.all()
     serializer_class = ProfessorSerializer
 

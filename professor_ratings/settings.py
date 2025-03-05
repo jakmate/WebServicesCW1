@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-u^w*t1ck8*497p7$mx!q^j2&b#3pq2b7oec)5%$s(w52y_2lai'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['sc22jo.pythonanywhere.com']
+ALLOWED_HOSTS = ['sc22jo.pythonanywhere.com', '127.0.0.1']
 
 STATIC_URL = '/static/'
 STATIC_ROOT = '/home/sc22jo/WebServicesCW1/static'
